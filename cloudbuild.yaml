@@ -1,1 +1,37 @@
+options:
+  logging: CLOUD_LOGGING
 
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'build',
+      '-t',
+      'us-central1-docker.pkg.dev/$PROJECT_ID/my-python-repo/my-app:$SHORT_SHA',
+      '.'
+    ]
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'push',
+      'us-central1-docker.pkg.dev/$PROJECT_ID/my-python-repo/my-app:$SHORT_SHA'
+    ]
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      VM_NAME="my-vm-$SHORT_SHA"
+      IMAGE="us-central1-docker.pkg.dev/$PROJECT_ID/my-python-repo/my-app:$SHORT_SHA"
+
+      echo "Creating VM $VM_NAME..."
+
+      gcloud compute instances create-with-container "$VM_NAME" \
+        --zone=us-central1-a \
+        --container-image="$IMAGE" \
+        --container-restart-policy=Never \
+        --machine-type=e2-medium \
+        --quiet
+
+      echo "VM created and container started!"
